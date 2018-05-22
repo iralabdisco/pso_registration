@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
   pcl::VoxelGrid<PointType> voxel_filter;
 
   try {
-    TCLAP::CmdLine cmd("PSO Initial Guess", ' ', "1.0");
+    TCLAP::CmdLine cmd("PSO Point Clouds Registration", ' ', "1.0");
     TCLAP::UnlabeledValueArg<std::string> source_file_name_arg(
         "source_file_name", "The path of the source point cloud", true,
         "source_cloud.pcd", "string", cmd);
