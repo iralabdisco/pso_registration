@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
-
+#include <math.h>
 #include "pcl/common/distances.h"
 #include "pcl/kdtree/kdtree_flann.h"
 #include "pcl/point_cloud.h"
@@ -61,6 +61,22 @@ inline double sumSquaredError(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
     distances.reserve(1);
     kdtree.nearestKSearch(*cloud1, i, 1, neighbours, distances);
     sum += distances[0];
+  }
+  return sum;
+}
+
+inline double l1_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
+                              pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
+  double sum = 0;
+  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+  kdtree.setInputCloud(cloud2);
+  for (std::size_t i = 0; i < cloud1->size(); i++) {
+    std::vector<int> neighbours;
+    std::vector<float> distances;
+    neighbours.reserve(1);
+    distances.reserve(1);
+    kdtree.nearestKSearch(*cloud1, i, 1, neighbours, distances);
+    sum += sqrt(distances[0]);
   }
   return sum;
 }

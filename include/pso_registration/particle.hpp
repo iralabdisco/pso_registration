@@ -128,7 +128,7 @@ class Particle {
   double score() {
     pcl::transformPointCloud(*source_cloud_, *moved_source_cloud_,
                              getTransformation());
-    return -robustAveragedSumSquaredError(moved_source_cloud_, target_cloud_);
+    return -l1_distance(moved_source_cloud_, target_cloud_);
   }
 
   void evolve() {
