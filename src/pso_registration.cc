@@ -32,6 +32,7 @@ int main(int argc, char **argv) {
   std::string source_file_name;
   std::string target_file_name;
   std::string ground_truth_name;
+  std::string metric;
   bool verbose = false;
   Eigen::Matrix4d initial_transformation = Eigen::Matrix4d::Identity();
 
@@ -60,6 +61,8 @@ int main(int argc, char **argv) {
     TCLAP::ValueArg<int> num_part_arg("p", "num_part", "The number of particles of the swarm", false, 50, "int", cmd);
     TCLAP::ValueArg<int> num_gen_arg("e", "num_it", "The number of iterations (generations) of the algorithm", false,
                                      1000, "int", cmd);
+    TCLAP::ValueArg<std::string> metric_arg("m", "metric", "The metric to use. One of: l1, l2, robust_l2, normalized_robust_l2", false,
+                                     "l1", "string", cmd);
     TCLAP::SwitchArg verbose_arg("v", "verbose", "Verbosity", cmd, false);
     cmd.parse(argc, argv);
 
@@ -67,6 +70,7 @@ int main(int argc, char **argv) {
     target_file_name = target_file_name_arg.getValue();
     num_part = num_part_arg.getValue();
     num_gen = num_gen_arg.getValue();
+    metric = metric_arg.getValue();
     if (verbose_arg.getValue()) {
       spdlog::set_level(spdlog::level::debug);
     }
@@ -108,10 +112,24 @@ int main(int argc, char **argv) {
   pcl::transformPointCloud(*source_cloud, *moved_source, initial_transformation);
   double initial_error = point_cloud_registration_benchmark::calculate_error(source_cloud, moved_source);
 
+  double (*score_function)(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
+  if(metric == "l2"){
+    spdlog::debug("Using l2 distance");
+    score_function = &pso_registration::l2_distance;
+  }else if(metric =="robust_l2"){
+    spdlog::debug("Using robust l2 distance");
+    score_function = &pso_registration::robust_l2_distance;
+  }else if(metric == "robust_normalized_l2"){
+    spdlog::debug("Using robust normalized l2 distance");
+    score_function = &pso_registration::robust_normalized_l2_distance;
+  }else{
+    spdlog::debug("Using l1 distance");
+    score_function = &pso_registration::l1_distance;
+  }
 
   Swarm swarm;
   for (int i = 0; i < num_part; i++) {
-    swarm.add_particle(Particle(moved_source, target_cloud, i));
+    swarm.add_particle(Particle(moved_source, target_cloud, i, score_function));
   }
   Particle best;
   swarm.init();

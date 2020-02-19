@@ -5,7 +5,6 @@
 #include <random>
 
 #include "pcl/common/common.h"
-
 #include "pso_registration/utilities.hpp"
 
 namespace pso_registration {
@@ -14,8 +13,8 @@ namespace pso_registration {
 
 class Particle {
  public:
-  Particle(pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud,
-           pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud, int id)
+  Particle(pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud, int id,
+           double (*scoring_function)(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr))
       : source_cloud_(source_cloud),
         target_cloud_(target_cloud),
         max_position_(PARTICLE_STATE_SIZE_),
@@ -25,7 +24,8 @@ class Particle {
         velocity_(PARTICLE_STATE_SIZE_),
         id_(id),
         generator_(rd_()),
-        uniform_random_(0, 1) {
+        uniform_random_(0, 1),
+        scoring_function_(scoring_function) {
     initial_guess_ = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     moved_source_cloud_ = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
 
@@ -41,8 +41,7 @@ class Particle {
       max_velocity_[i] = (max_position_[i] - min_position_[i]) / 4.0;
     }
     for (int i = 0; i < position_.size(); i++) {
-      std::uniform_real_distribution<double> random_position(min_position_[i],
-                                                             max_position_[i]);
+      std::uniform_real_distribution<double> random_position(min_position_[i], max_position_[i]);
       position_[i] = random_position(generator_);
     }
     velocity_ << 0, 0, 0, 0, 0, 0;
@@ -73,6 +72,7 @@ class Particle {
     max_position_ = other.max_position_;
     min_position_ = other.min_position_;
     id_ = other.id_;
+    scoring_function_=other.scoring_function_;
     return *this;
   }
 
@@ -80,10 +80,8 @@ class Particle {
     Eigen::Affine3d trans(Eigen::Affine3d::Identity());
     trans.translate(Eigen::Vector3d(position_[0], position_[1], position_[2]));
 
-    double axis_x =
-        sin(position_[4] * 0.0174533) * cos(position_[5] * 0.0174533);
-    double axis_y =
-        sin(position_[4] * 0.0174533) * sin(position_[5] * 0.0174533);
+    double axis_x = sin(position_[4] * 0.0174533) * cos(position_[5] * 0.0174533);
+    double axis_y = sin(position_[4] * 0.0174533) * sin(position_[5] * 0.0174533);
     double axis_z = cos(position_[4] * 0.0174533);
     Eigen::Vector3d axis(axis_x, axis_y, axis_z);
     axis.normalize();
@@ -98,9 +96,7 @@ class Particle {
 
   int getId() const { return id_; }
 
-  static bool cmp(const Particle &p1, const Particle &p2) {
-    return p1.getScore() < p2.getScore();
-  }
+  static bool cmp(const Particle &p1, const Particle &p2) { return p1.getScore() < p2.getScore(); }
 
  private:
   pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud_;
@@ -124,18 +120,16 @@ class Particle {
   const double C1_ = 2.1;
   const double C2_ = 1.9;
   int id_;
+  double (*scoring_function_)(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
 
   double score() {
-    pcl::transformPointCloud(*source_cloud_, *moved_source_cloud_,
-                             getTransformation());
-    return -l1_distance(moved_source_cloud_, target_cloud_);
+    pcl::transformPointCloud(*source_cloud_, *moved_source_cloud_, getTransformation());
+    return -scoring_function_(moved_source_cloud_, target_cloud_);
   }
 
   void evolve() {
-    velocity_ =
-        velocity_ * ALPHA_ +
-        C1_ * uniform_random_(generator_) * (best_position_ - position_) +
-        uniform_random_(generator_) * C2_ * (global_best_ - position_);
+    velocity_ = velocity_ * ALPHA_ + C1_ * uniform_random_(generator_) * (best_position_ - position_) +
+                uniform_random_(generator_) * C2_ * (global_best_ - position_);
 
     for (int i = 0; i < velocity_.size(); i++) {
       if (velocity_[i] > max_velocity_[i]) {

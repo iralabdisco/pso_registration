@@ -17,7 +17,7 @@ with open(f"{result_file}", mode="w") as out_file:
     result_writer.writerow(["id", "initial_error", "final_error", "transformation"])
     with open(sys.argv[1]) as csvfile:
         file_reader = csv.DictReader(csvfile, delimiter=" ")
-        for row in tqdm(file_reader):
+        for row in tqdm.tqdm(file_reader):
             source = f"{folder}/{row['source']}"
             target = f"{folder}/{row['target']}"
             transformation = []
