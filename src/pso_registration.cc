@@ -5,7 +5,6 @@
 #include <memory>
 #include <string>
 
-#include "boost/make_shared.hpp"
 #include "pcl/common/transforms.h"
 #include "pcl/filters/random_sample.h"
 #include "pcl/filters/voxel_grid.h"
@@ -110,7 +109,7 @@ int main(int argc, char **argv) {
 
   spdlog::debug("Loading source point cloud from {}", source_file_name);
 
-  pcl::PointCloud<PointType>::Ptr source_cloud = boost::make_shared<pcl::PointCloud<PointType>>();
+  pcl::PointCloud<PointType>::Ptr source_cloud(new pcl::PointCloud<PointType>);
   if (pcl::io::loadPCDFile(source_file_name, *source_cloud) == -1) {
     spdlog::critical("Could not load source cloud {}, closing...", source_file_name);
 
@@ -118,7 +117,7 @@ int main(int argc, char **argv) {
   }
 
   spdlog::debug("Loading target point cloud from {}", target_file_name);
-  pcl::PointCloud<PointType>::Ptr target_cloud = boost::make_shared<pcl::PointCloud<PointType>>();
+  pcl::PointCloud<PointType>::Ptr target_cloud(new pcl::PointCloud<PointType>);
   if (pcl::io::loadPCDFile<PointType>(target_file_name, *target_cloud) == -1) {
     spdlog::critical("Could not load source cloud {}, closing...", target_file_name);
     exit(EXIT_FAILURE);
@@ -128,10 +127,9 @@ int main(int argc, char **argv) {
   pcl::removeNaNFromPointCloud(*source_cloud, *source_cloud, nan_points);
   pcl::removeNaNFromPointCloud(*target_cloud, *target_cloud, nan_points);
 
-  pcl::PointCloud<PointType>::Ptr moved_filtered_source_cloud;
-  moved_filtered_source_cloud.reset(new pcl::PointCloud<PointType>);
-
-  pcl::transformPointCloud(*source_cloud, *moved_filtered_source_cloud, initial_transformation);
+  pcl::PointCloud<PointType>::Ptr moved_filtered_source_cloud(new pcl::PointCloud<PointType>);
+  pcl::copyPointCloud(*source_cloud, *moved_filtered_source_cloud);
+  pcl::transformPointCloud(*moved_filtered_source_cloud, *moved_filtered_source_cloud, initial_transformation);
 
   double initial_error = point_cloud_registration_benchmark::calculate_error(source_cloud, moved_filtered_source_cloud);
 
@@ -194,8 +192,7 @@ int main(int argc, char **argv) {
   }
   Swarm swarm;
 
-  pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr target_tree;
-  target_tree.reset(new pcl::KdTreeFLANN<pcl::PointXYZ>);
+  pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr target_tree (new pcl::KdTreeFLANN<pcl::PointXYZ>);
   target_tree->setEpsilon(3.6);
   target_tree->setInputCloud(target_cloud);
   for (int i = 0; i < num_part; i++) {
