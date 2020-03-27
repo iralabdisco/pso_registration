@@ -18,6 +18,7 @@ make -j
 ```
 
 ### Usage ###
+``` 
 USAGE: 
 
    ./pso_registration  [-d] [-v] [-r <float>] [-t <float>] [-s <float>] [-m
@@ -79,3 +80,4 @@ Where:
       |0 0 0 1|> 
      The elements of the 4x4 transformation matrix (without the  0 0 0 1
      line) to apply to the source cloud before the registration [m1..12]
+     ```
