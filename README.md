@@ -8,6 +8,7 @@ Dependencies:
  - [Boost](https://www.boost.org/)
  - [TCLap](http://tclap.sourceforge.net/)
  - [PCL](http://pointclouds.org/)
+ - [spdlog](https://github.com/gabime/spdlog)
  - A c++14 compiler
 ```
 mkdir build
