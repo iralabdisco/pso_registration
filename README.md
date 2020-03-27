@@ -18,43 +18,64 @@ make -j
 ```
 
 ### Usage ###
-   `./pso_registration  [-v] [-g <string>] [-e <int>] [-p <int>] [-t
-                       <float>] [-s <float>] [--] [--version] [-h] <source_cloud>
-                       <target_cloud>`
-                       
+USAGE: 
+
+   ./pso_registration  [-d] [-v] [-r <float>] [-t <float>] [-s <float>] [-m
+                       <string>] [-e <int>] [-p <int>] [--] [--version]
+                       [-h] <string> <string> <|m1 m2 m3 m4|
+
+                       |m5 m6 m7 m8|
+
+                       |m9 m10 m11 m12|
+
+                       |0 0 0 1|> ...
+
+
 Where: 
 
-   `-v,  --verbose` 
-      Verbosity. Is set, display the current status of the alignment.
+   -d,  --display
+     Display registration progress
 
-   `-g <string>,  --ground_truth <string>`
-   The path of the ground truth for the source cloud, if available. It is used only to calculate the error of the obtained  alignment w.r.t. the ground truth.
+   -v,  --verbose
+     Verbosity
 
-   `-e <int>,  --num_it <int>`
-     The number of iterations (generations) of particle swarm optimization algorithm
+   -r <float>,  --random_perc <float>
+     The percentage of points (of the source and target cloud) to use for
+     the alignment (randomly sampled).
 
-   `-p <int>,  --num_part <int>`
+   -t <float>,  --target_filter_size <float>
+     The leaf size of the voxel filter of the target cloud
+
+   -s <float>,  --source_filter_size <float>
+     The leaf size of the voxel filter of the source cloud
+
+   -m <string>,  --metric <string>
+     The metric to use. One of: l1, l2, robust_l2, normalized_robust_l2
+
+   -e <int>,  --num_it <int>
+     The number of iterations (generations) of the algorithm
+
+   -p <int>,  --num_part <int>
      The number of particles of the swarm
 
-   `-t <float>,  --target_filter_size <float>`
-     The leaf size of the voxel filter of the target cloud. The target point cloud can be downsampled using a [VoxelGrid Filter](http://pointclouds.org/documentation/tutorials/voxel_grid.php). Use a filter size of 0 if downsampling is not required.
-
-   `-s <float>,  --source_filter_size <float>`
-     The leaf size of the voxel filter of the source cloud. The source point cloud can be downsampled using a [VoxelGrid Filter](http://pointclouds.org/documentation/tutorials/voxel_grid.php). Use a filter size of 0 if downsampling is not required.
-
-   `--,  --ignore_rest`
-     Ignores the rest of the labeled arguments following this flag.
-
-   `--version`
+   --version
      Displays version information and exits.
 
-   `-h,  --help`
+   -h,  --help
      Displays usage information and exits.
 
-   `<source_cloud>
-     (required)`  The path of the source point cloud
+   <string>
+     (required)  The path of the source point cloud
 
-   `<target_cloud>
-     (required)`  The path of the target point cloud
+   <string>
+     (required)  The path of the target point cloud
 
-The default values for the number of particles (50) and the number of generations (1000) should work for most registrations. The number of generations can be lowered to improve the speed of the algorithm.
+   <|m1 m2 m3 m4|
+
+      |m5 m6 m7 m8|
+
+      |m9 m10 m11 m12|
+
+      |0 0 0 1|> 
+     The elements of the 4x4 transformation matrix (without the  0 0 0 1
+     line) to apply to the source cloud before the registration [m1..12]
