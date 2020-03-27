@@ -1,12 +1,12 @@
 import csv, os, sys, subprocess, tqdm
 
-executable = "/home/simone/Documenti/pso_registration/build/pso_registration"
+executable = "/home/simone/pso_registration/build/pso_registration"
 problem_file = sys.argv[1]
 folder = sys.argv[2]
 # folder = "p2at_met"
 results = []
 command = []
-parameters = ["-p 100", "-e 500"]
+parameters = ["-p 100", "-e 300", "-r 5", "-v", "-s 0.1", "-t 0.1"]
 result_file = problem_file.replace(".txt", "_result.txt")
 
 with open(f"{result_file}", mode="w") as out_file:

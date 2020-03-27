@@ -1,79 +1,27 @@
-#ifndef INCLUDE_PSO_REGISTRATION_UTILITIES_HPP_
-#define INCLUDE_PSO_REGISTRATION_UTILITIES_HPP_
+// Copyright 2018-present, Simone Fontana
+// Distributed under the GNU GPL 3.0 License (https://www.gnu.org/licenses/gpl-3.0.html)
 
-#include <assert.h>
-#include <math.h>
+#ifndef PSO_REGISTRATION_UTILITIES_HPP_
+#define PSO_REGISTRATION_UTILITIES_HPP_
 
-#include <Eigen/Core>
-#include <Eigen/Sparse>
 #include <algorithm>
 #include <limits>
 #include <vector>
 
-#include "pcl/common/distances.h"
-#include "pcl/kdtree/kdtree_flann.h"
+#include "pcl/kdtree/kdtree.h"
 #include "pcl/point_cloud.h"
-#include "pcl/point_types.h"
-#include "pcl/registration/distances.h"
 
 namespace pso_registration {
 
-using pcl::euclideanDistance;
-
-inline double calculateMSE(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
-  assert(cloud1->size() == cloud2->size());
-  double mse = 0;
-  for (int i = 0; i < cloud1->size(); i++) {
-    mse += euclideanDistance(cloud1->at(i), cloud2->at(i));
-  }
-  mse /= cloud1->size();
-  return mse;
-}
-
-inline double averageClosestDistance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
-                                     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
-  double avgDistance = 0;
-  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-  kdtree.setInputCloud(cloud2);
-
-  for (std::size_t i = 0; i < cloud1->size(); i++) {
-    std::vector<int> neighbours;
-    std::vector<float> distances;
-    neighbours.reserve(1);
-    distances.reserve(1);
-    kdtree.nearestKSearch(*cloud1, i, 1, neighbours, distances);
-    avgDistance += distances[0];
-  }
-  avgDistance /= cloud1->size();
-  return avgDistance;
-}
-
-inline double l2_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
+inline double l1_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2,
+                          pcl::KdTree<pcl::PointXYZ>::Ptr cloud2_tree) {
   double sum = 0;
-  double median_distance;
-  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-  kdtree.setInputCloud(cloud2);
   for (std::size_t i = 0; i < cloud1->size(); i++) {
     std::vector<int> neighbours;
     std::vector<float> distances;
     neighbours.reserve(1);
     distances.reserve(1);
-    kdtree.nearestKSearch(*cloud1, i, 1, neighbours, distances);
-    sum += distances[0];
-  }
-  return sum;
-}
-
-inline double l1_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
-  double sum = 0;
-  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-  kdtree.setInputCloud(cloud2);
-  for (std::size_t i = 0; i < cloud1->size(); i++) {
-    std::vector<int> neighbours;
-    std::vector<float> distances;
-    neighbours.reserve(1);
-    distances.reserve(1);
-    kdtree.nearestKSearch(*cloud1, i, 1, neighbours, distances);
+    cloud2_tree->nearestKSearch(*cloud1, i, 1, neighbours, distances);
     auto closest = cloud2->at(neighbours[0]);
     double diff_x = cloud1->at(i).x - closest.x, diff_y = cloud1->at(i).y - closest.y,
            diff_z = cloud1->at(i).z - closest.z;
@@ -82,19 +30,31 @@ inline double l1_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::Point
   return sum;
 }
 
-inline double robust_l2_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
-                                 pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
+inline double l2_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2,
+                          pcl::KdTree<pcl::PointXYZ>::Ptr cloud2_tree) {
+  double sum = 0;
+  for (std::size_t i = 0; i < cloud1->size(); i++) {
+    std::vector<int> neighbours;
+    std::vector<float> distances;
+    neighbours.reserve(1);
+    distances.reserve(1);
+    cloud2_tree->nearestKSearch(*cloud1, i, 1, neighbours, distances);
+    sum += distances[0];
+  }
+  return sum;
+}
+
+inline double robust_l2_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2,
+                                 pcl::KdTree<pcl::PointXYZ>::Ptr cloud2_tree) {
   double sum = 0;
   double median_distance;
-  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-  kdtree.setInputCloud(cloud2);
   std::vector<double> all_distances;
   for (std::size_t i = 0; i < cloud1->size(); i++) {
     std::vector<int> neighbours;
     std::vector<float> distances;
     neighbours.reserve(1);
     distances.reserve(1);
-    kdtree.nearestKSearch(*cloud1, i, 1, neighbours, distances);
+    cloud2_tree->nearestKSearch(*cloud1, i, 1, neighbours, distances);
     all_distances.push_back(distances[0]);
   }
 
@@ -118,18 +78,16 @@ inline double robust_l2_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
 }
 
 inline double robust_l2_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2,
-                                 double factor) {
+                                 pcl::KdTree<pcl::PointXYZ>::Ptr cloud2_tree, double factor) {
   double sum = 0;
   double median_distance;
-  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-  kdtree.setInputCloud(cloud2);
   std::vector<double> all_distances;
   for (std::size_t i = 0; i < cloud1->size(); i++) {
     std::vector<int> neighbours;
     std::vector<float> distances;
     neighbours.reserve(1);
     distances.reserve(1);
-    kdtree.nearestKSearch(*cloud1, i, 1, neighbours, distances);
+    cloud2_tree->nearestKSearch(*cloud1, i, 1, neighbours, distances);
     all_distances.push_back(distances[0]);
   }
 
@@ -153,18 +111,17 @@ inline double robust_l2_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl
 }
 
 inline double robust_normalized_l2_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
-                                            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
+                                            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2,
+                                            pcl::KdTree<pcl::PointXYZ>::Ptr cloud2_tree) {
   double sum = 0;
   double median_distance;
-  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-  kdtree.setInputCloud(cloud2);
   std::vector<double> all_distances;
   for (std::size_t i = 0; i < cloud1->size(); i++) {
     std::vector<int> neighbours;
     std::vector<float> distances;
     neighbours.reserve(1);
     distances.reserve(1);
-    kdtree.nearestKSearch(*cloud1, i, 1, neighbours, distances);
+    cloud2_tree->nearestKSearch(*cloud1, i, 1, neighbours, distances);
     all_distances.push_back(distances[0]);
   }
 
@@ -181,82 +138,10 @@ inline double robust_normalized_l2_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr 
       num_filtered++;
     }
   }
-  if (num_filtered < 10) {
+  if (num_filtered < (cloud2->size() * 0.01)) {
     return std::numeric_limits<double>::max();
   }
   return sum / num_filtered;
-}
-
-inline double medianClosestDistance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
-                                    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
-  double median_distance = 0;
-  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-  kdtree.setInputCloud(cloud2);
-  std::vector<float> distances;
-  for (std::size_t i = 0; i < cloud1->size(); i++) {
-    std::vector<int> neighbours;
-    std::vector<float> dist;
-    neighbours.reserve(1);
-    distances.reserve(1);
-    kdtree.nearestKSearch(*cloud1, i, 1, neighbours, dist);
-    distances.push_back(dist[0]);
-  }
-  std::sort(distances.begin(), distances.end());
-  if (distances.size() % 2 != 0) {
-    median_distance = distances[(distances.size() + 1) / 2];
-  } else {
-    median_distance = (distances[distances.size() / 2] + distances[(distances.size() / 2) + 1]) / 2.0;
-  }
-  return median_distance;
-}
-
-inline double robustMedianClosestDistance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
-                                          pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
-  double median_distance = 0;
-  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-  kdtree.setInputCloud(cloud2);
-  std::vector<float> distances;
-  std::vector<float> filtered_distances;
-  for (std::size_t i = 0; i < cloud1->size(); i++) {
-    std::vector<int> neighbours;
-    std::vector<float> dist;
-    neighbours.reserve(1);
-    distances.reserve(1);
-    kdtree.nearestKSearch(*cloud1, i, 1, neighbours, dist);
-    distances.push_back(dist[0]);
-  }
-  std::sort(distances.begin(), distances.end());
-  if (distances.size() % 2 != 0) {
-    median_distance = distances[(distances.size() + 1) / 2];
-  } else {
-    median_distance = (distances[distances.size() / 2] + distances[(distances.size() / 2) + 1]) / 2.0;
-  }
-  for (auto it = distances.begin(); it != distances.end(); it++) {
-    if (*it <= median_distance * 3 && *it >= median_distance / 3.0) {
-      filtered_distances.push_back(*it);
-    }
-  }
-  if (filtered_distances.size() % 2 != 0) {
-    median_distance = filtered_distances[(filtered_distances.size() + 1) / 2];
-  } else {
-    median_distance =
-        (filtered_distances[filtered_distances.size() / 2] + filtered_distances[(filtered_distances.size() / 2) + 1]) /
-        2.0;
-  }
-  return median_distance / filtered_distances.size();
-}
-
-inline double medianDistance(std::vector<Eigen::Triplet<double>> tripletList) {
-  double median_distance;
-  std::sort(tripletList.begin(), tripletList.end(),
-            [](Eigen::Triplet<double> x, Eigen::Triplet<double> y) { return x.value() < y.value(); });
-  if (tripletList.size() % 2 != 0) {
-    median_distance = tripletList[(tripletList.size() + 1) / 2].value();
-  } else {
-    median_distance =
-        (tripletList[tripletList.size() / 2].value() + tripletList[(tripletList.size() / 2) + 1].value()) / 2.0;
-  }
-  return median_distance;
 }
 
 inline Eigen::Quaterniond euler2Quaternion(const double roll, const double pitch, const double yaw) {
@@ -270,4 +155,4 @@ inline Eigen::Quaterniond euler2Quaternion(const double roll, const double pitch
 
 }  // namespace pso_registration
 
-#endif  // INCLUDE_PSO_REGISTRATION_UTILITIES_HPP_
+#endif  // PSO_REGISTRATION_UTILITIES_HPP_

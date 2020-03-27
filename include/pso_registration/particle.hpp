@@ -1,10 +1,15 @@
-#ifndef INCLUDE_PSO_REGISTRATION_PARTICLE_HPP_
-#define INCLUDE_PSO_REGISTRATION_PARTICLE_HPP_
+// Copyright 2018-present, Simone Fontana
+// Distributed under the GNU GPL 3.0 License (https://www.gnu.org/licenses/gpl-3.0.html)
+
+#ifndef PSO_REGISTRATION_PARTICLE_HPP_
+#define PSO_REGISTRATION_PARTICLE_HPP_
 
 #include <Eigen/Dense>
 #include <random>
 
 #include "pcl/common/common.h"
+#include "pcl/kdtree/kdtree.h"
+
 #include "pso_registration/utilities.hpp"
 
 namespace pso_registration {
@@ -13,10 +18,13 @@ namespace pso_registration {
 
 class Particle {
  public:
-  Particle(pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud, int id,
-           double (*scoring_function)(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr))
+  Particle(pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud,
+           pcl::KdTree<pcl::PointXYZ>::Ptr target_tree, int id,
+           double (*scoring_function)(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr,
+                                      pcl::KdTree<pcl::PointXYZ>::Ptr))
       : source_cloud_(source_cloud),
         target_cloud_(target_cloud),
+        target_tree_(target_tree),
         max_position_(PARTICLE_STATE_SIZE_),
         min_position_(PARTICLE_STATE_SIZE_),
         position_(PARTICLE_STATE_SIZE_),
@@ -61,6 +69,7 @@ class Particle {
     initial_guess_ = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     moved_source_cloud_ = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     target_cloud_ = other.target_cloud_;
+    target_tree_ = other.target_tree_;
     position_ = other.position_;
     velocity_ = other.velocity_;
     max_velocity_ = other.max_velocity_;
@@ -72,7 +81,7 @@ class Particle {
     max_position_ = other.max_position_;
     min_position_ = other.min_position_;
     id_ = other.id_;
-    scoring_function_=other.scoring_function_;
+    scoring_function_ = other.scoring_function_;
     return *this;
   }
 
@@ -102,6 +111,7 @@ class Particle {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source_cloud_;
   pcl::PointCloud<pcl::PointXYZ>::Ptr initial_guess_;
   pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud_;
+  pcl::KdTree<pcl::PointXYZ>::Ptr target_tree_;
   pcl::PointCloud<pcl::PointXYZ>::Ptr moved_source_cloud_;
   Eigen::VectorXd position_;
   Eigen::VectorXd velocity_;
@@ -120,11 +130,12 @@ class Particle {
   const double C1_ = 2.1;
   const double C2_ = 1.9;
   int id_;
-  double (*scoring_function_)(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr);
+  double (*scoring_function_)(pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr,
+                              pcl::KdTree<pcl::PointXYZ>::Ptr);
 
   double score() {
     pcl::transformPointCloud(*source_cloud_, *moved_source_cloud_, getTransformation());
-    return -scoring_function_(moved_source_cloud_, target_cloud_);
+    return -scoring_function_(moved_source_cloud_, target_cloud_, target_tree_);
   }
 
   void evolve() {
@@ -182,4 +193,4 @@ std::ostream &operator<<(std::ostream &os, Particle const &p) {
 
 }  // namespace pso_registration
 
-#endif  // INCLUDE_PSO_REGISTRATION_PARTICLE_HPP_
+#endif  // PSO_REGISTRATION_PARTICLE_HPP_

@@ -1,10 +1,12 @@
-#ifndef INCLUDE_PSO_REGISTRATION_SWARM_HPP_
-#define INCLUDE_PSO_REGISTRATION_SWARM_HPP_
+// Copyright 2018-present, Simone Fontana
+// Distributed under the GNU GPL 3.0 License (https://www.gnu.org/licenses/gpl-3.0.html)
+
+#ifndef PSO_REGISTRATION_SWARM_HPP_
+#define PSO_REGISTRATION_SWARM_HPP_
 
 #include <omp.h>
 
 #include <fstream>
-#include <thread>
 #include <vector>
 
 #include "pso_registration/particle.hpp"
@@ -51,10 +53,7 @@ class Swarm {
   std::random_device rd_;
   std::mt19937 generator_;
 
-  Particle findGBest() {
-    return *(
-        std::max_element(particles_.begin(), particles_.end(), Particle::cmp));
-  }
+  Particle findGBest() { return *(std::max_element(particles_.begin(), particles_.end(), Particle::cmp)); }
 
   Particle findLBest(int index) {
     std::vector<Particle> neighbours;
@@ -70,8 +69,7 @@ class Swarm {
       neighbours.push_back(particles_[index + 1]);
     }
 
-    Particle lbest = *(std::max_element(neighbours.begin(), neighbours.begin(),
-                                        Particle::cmp));
+    Particle lbest = *(std::max_element(neighbours.begin(), neighbours.begin(), Particle::cmp));
 
     return lbest;
   }
@@ -90,4 +88,4 @@ std::ostream &operator<<(std::ostream &os, Swarm const &s) {
 
 }  // namespace pso_registration
 
-#endif  // INCLUDE_PSO_REGISTRATION_SWARM_HPP_
+#endif  // PSO_REGISTRATION_SWARM_HPP_
