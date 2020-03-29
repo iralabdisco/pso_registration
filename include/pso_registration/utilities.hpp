@@ -4,14 +4,20 @@
 #ifndef PSO_REGISTRATION_UTILITIES_HPP_
 #define PSO_REGISTRATION_UTILITIES_HPP_
 
+#include <Eigen/Sparse>
 #include <algorithm>
+#include <cmath>
 #include <limits>
+#include <numeric>
 #include <vector>
 
 #include "pcl/kdtree/kdtree.h"
 #include "pcl/point_cloud.h"
 
+#include "pso_registration/probabilistic_weights.hpp"
+
 namespace pso_registration {
+inline double pi() { return std::atan(1) * 4; }
 
 inline double l1_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2,
                           pcl::KdTree<pcl::PointXYZ>::Ptr cloud2_tree) {
@@ -33,13 +39,33 @@ inline double l1_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::Point
 inline double l2_distance(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2,
                           pcl::KdTree<pcl::PointXYZ>::Ptr cloud2_tree) {
   double sum = 0;
+  int num_neig = 10;
+  prob_point_cloud_registration::ProbabilisticWeights weight_updater(std::numeric_limits<double>::infinity(), 3,
+                                                                     num_neig);
+  Eigen::SparseMatrix<double, Eigen::RowMajor> data_association(cloud1->size(), cloud2->size());
+  std::vector<Eigen::Triplet<double>> tripletList;
+  std::vector<double> squared_errors;
+  squared_errors.reserve(data_association.cols() * num_neig);
   for (std::size_t i = 0; i < cloud1->size(); i++) {
     std::vector<int> neighbours;
     std::vector<float> distances;
-    neighbours.reserve(1);
-    distances.reserve(1);
-    cloud2_tree->nearestKSearch(*cloud1, i, 1, neighbours, distances);
-    sum += distances[0];
+    cloud2_tree->nearestKSearch(*cloud1, i, num_neig, neighbours, distances);
+    int k = 0;
+    for (int j : neighbours) {
+      tripletList.push_back(Eigen::Triplet<double>(i, j, distances[k]));
+      squared_errors.push_back(distances[k] * distances[k]);
+      k++;
+    }
+  }
+  data_association.setFromTriplets(tripletList.begin(), tripletList.end());
+  data_association.makeCompressed();
+  Eigen::SparseMatrix<double, Eigen::RowMajor> weights =
+      weight_updater.updateWeights(data_association, squared_errors);
+  for (int i = 0, k = 0; i < weights.outerSize(); ++i) {
+    for (Eigen::SparseMatrix<double, Eigen::RowMajor>::InnerIterator it(weights, i); it; ++it) {
+      sum += it.value() * squared_errors[k];
+      k++;
+    }
   }
   return sum;
 }
