@@ -123,7 +123,7 @@ def align(source, target, initial_trans, args):
         omega=0.7298,
         eta1=2.1,
         eta2=1.9,
-        max_vel=0.25,
+        max_vel=0.1,
         neighb_type=2,
         neighb_param=2,
         memory=True,
@@ -140,7 +140,7 @@ def align(source, target, initial_trans, args):
     # )
     bee = pygmo.bee_colony(gen=1, limit=20)
     sade = pygmo.sade(gen=1, memory =True)
-    algo = pygmo.algorithm(bee)
+    algo = pygmo.algorithm(pso)
 
     # islands =[]
     # for i in range(args.swarm):
